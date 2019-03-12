@@ -3,7 +3,7 @@
 
 function check_req(){
 
-    command -v pwgen
+    command -v pwgen >> /dev/null
     if [ $? = 1 ]; then
         echo "please install pwgen"
         exit 1
@@ -13,6 +13,10 @@ function check_req(){
 check_req
 
 function do_run(){
+    if [ ! -f $csv ]; then
+        echo "file not exists"
+        exit 1
+    fi
     var_datum=$(date +"%Y%m%d")
     input=${csv}
     var_apache_user=${webuser}
@@ -39,20 +43,20 @@ function do_run(){
         var_group5=$(echo "${line}" | cut -d"," -f7)
         var_email=$(echo "${line}" | cut -d"," -f8)
         var_quota=$(echo "${line}" | cut -d"," -f9)
-     echo $var_username " with pwd " $var_password " in groups " $var_group1 $var_group2 $var_group3 $var_group4 $var_group5 " with email" $var_email "with quota" $var_quota
-    if [ "${var_group5}" != "" ] ;then
-    echo     su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --group='${var_group3}' --group='${var_group4}' --group='${var_group5}' --display-name='${var_name}'"
-    if [ "${var_group4}" != "" ] ;then
-    echo     su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --group='${var_group3}' --group='${var_group4}' --display-name='${var_name}'"
-    elif [ "${var_group3}" != "" ] ;then
-        su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --group='${var_group3}' --display-name='${var_name}'"
-    elif [ "${var_group2}" != "" ] ;then
-        su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --display-name='${var_name}'"
-    fi
-    su -s /bin/sh ${var_apache_user} -c " php ${var_path_nextcloud}/occ user:setting ${var_username} settings email '${var_email}'"
-    su -s /bin/sh ${var_apache_user} -c " php ${var_path_nextcloud}/occ user:setting ${var_username} files quota '${var_quota}'"
-     echo "${var_username};${var_password}" >> "${var_result_file}"
-done < "$input"
+        # echo $var_username " with pwd " $var_password " in groups " $var_group1 $var_group2 $var_group3 $var_group4 $var_group5 " with email" $var_email "with quota" $var_quota
+        # if [ "${var_group5}" != "" ] ;then
+        # echo     su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --group='${var_group3}' --group='${var_group4}' --group='${var_group5}' --display-name='${var_name}'"
+        # if [ "${var_group4}" != "" ] ;then
+        # echo     su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --group='${var_group3}' --group='${var_group4}' --display-name='${var_name}'"
+        # elif [ "${var_group3}" != "" ] ;then
+        #     su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --group='${var_group3}' --display-name='${var_name}'"
+        # elif [ "${var_group2}" != "" ] ;then
+        #     su -s /bin/sh ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --group='${var_group1}' --group='${var_group2}' --display-name='${var_name}'"
+        # fi
+        # su -s /bin/sh ${var_apache_user} -c " php ${var_path_nextcloud}/occ user:setting ${var_username} settings email '${var_email}'"
+        # su -s /bin/sh ${var_apache_user} -c " php ${var_path_nextcloud}/occ user:setting ${var_username} files quota '${var_quota}'"
+        # echo "${var_username};${var_password}" >> "${var_result_file}"
+    done < "$input"
 exit 0
 }
 
@@ -75,11 +79,20 @@ EOF
 
 function get_example(){
 
-
-cat <<EOT >> ~/users.csv
+if [ -f $HOME/users_template.csv ]; then
+    echo "file  $HOME/users_template.csv already exist"
+    exit 1
+fi
+cat <<EOT >> ~/users_template.csv
 Nome e Cognome,username,group1,group2,group3,group4,group5,E-mail,Quota
 
 EOT
+
+    if [ $? = 1 ]; then
+        echo "chek permissions"
+    else
+        echo "example created in $HOME"
+    fi
 }
 function print_default(){
     echo  "Print default options..."
@@ -117,7 +130,7 @@ PROGNAME=${0##*/}
 PROGVERSION=0.1.0
 SHORTOPTS="hs:cr"
 
-LONGOPTS="help,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default,get_example:"
+LONGOPTS="help,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default,get_example"
 
 ARGS=$(getopt -s bash  --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 
@@ -169,11 +182,11 @@ while true; do
         print_default
         exit 0
         ;;
-    --get_example(){
+    --get_example)
+        shift
         get_example
         exit 0
         ;;
-    }
     *)
         shift
         break
