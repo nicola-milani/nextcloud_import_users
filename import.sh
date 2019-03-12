@@ -72,6 +72,15 @@ EOF
 
 }
 
+
+function get_example(){
+
+
+cat <<EOT >> ~/users.csv
+Nome e Cognome,username,group1,group2,group3,group4,group5,E-mail,Quota
+
+EOT
+}
 function print_default(){
     echo  "Print default options..."
     echo " "
@@ -108,7 +117,7 @@ PROGNAME=${0##*/}
 PROGVERSION=0.1.0
 SHORTOPTS="hs:cr"
 
-LONGOPTS="help,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default"
+LONGOPTS="help,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default,get_example:"
 
 ARGS=$(getopt -s bash  --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 
@@ -160,6 +169,11 @@ while true; do
         print_default
         exit 0
         ;;
+    --get_example(){
+        get_example
+        exit 0
+        ;;
+    }
     *)
         shift
         break
