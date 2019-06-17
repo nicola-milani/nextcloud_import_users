@@ -101,6 +101,7 @@ function do_help(){
 
 --csv /path/of/users_csv --header [true|false] --sep "," --debug [true|false] --nxt_path /path/nextcloud --log_path /path/output/log
 --help: show this
+--reset-pwd: reset pwd 
 --add-grp: add all users in csv file in to group
 --grp-report : show report of all users by group
 --csv: path of csv with users
@@ -131,6 +132,20 @@ EOT
     else
         echo "example created in $(pwd)"
     fi
+}
+
+#reset only for employee
+
+function reset-pwd(){
+ var_password=$(pwgen 8 -c -n -N 1)
+ export OC_PASS=${var_password}+
+ for line in $(sudo -u www-data php /var/www/html/nextcloud/occ group:list -o personale | sed -e '1,/personale/d' | sed -e '/:/,$d' | cut -d "-" -f2|sort) 
+ do
+        sudo -u www-data "php /var/www/html/nextcloud/occ user:resetpassword --password-from-env $line" 
+        var_username=$line
+        echo $var_username password reset
+        logger $var_username password reset
+  done
 }
 function print_default(){
     echo  "Print default options..."
@@ -172,7 +187,7 @@ PROGNAME=${0##*/}
 PROGVERSION=0.1.0
 SHORTOPTS="hs:cr"
 
-LONGOPTS="help,add-grp,grp-report,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default,get_example"
+LONGOPTS="help,add-grp,reset-pwd,grp-report,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default,get_example"
 
 ARGS=$(getopt -s bash  --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 
@@ -189,6 +204,10 @@ while true; do
 	    shift
             shift
 	    add_to_group $1 $2
+            exit 0
+        ;;
+        --reset-pwd)
+            reset-pwd
             exit 0
         ;;
         --grp-report)
