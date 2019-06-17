@@ -12,7 +12,9 @@ function check_req(){
 
 check_req
 
+#main program
 function do_run(){
+    #check if file exists
     if [ ! -f $csv ]; then
         echo "file not exists"
         exit 1
@@ -131,7 +133,8 @@ sep=","
 debug="false"
 webuser="root"
 nxt_path="/var/www"
-log_path="/root/"
+log_path="/var/log/nxt_tools/"
+mkdir -p $log_path
 
 function do_import() {
     clear
