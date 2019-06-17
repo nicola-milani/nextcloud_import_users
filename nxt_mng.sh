@@ -1,5 +1,9 @@
 #!/bin/bash
 #Command line tool for import from csv
+#author nicola milani info@nicolamilani.it
+#gpl
+
+. /etc/nxt_mng/config
 
 function check_req(){
     
@@ -29,14 +33,12 @@ function do_run(){
     #set -x
     while read -r line
     do
-        
         [ -z "$line" ] && continue
         test $i -eq 1 && ((i=i+1)) && continue
-        
         #   echo "Rang: ${line}"
         var_password=$(pwgen 8 -c -n -N 1)
-        set -e
-        export OC_PASS=$var_password
+#        set -e
+        export OC_PASS=$var_password+
         #   echo "${var_password} ${OC_PASS}"
         var_name=$(echo "${line}" | cut -d"," -f1)
         var_username=$(echo "${line}" | cut -d"," -f2)
@@ -64,22 +66,43 @@ function do_run(){
             group=$group" --group"${var_group5}
         fi
         if [ ! -z "${group}" ]; then
-            su -s /bin/bash ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env ${groups} --display-name='${var_name}'"
+            
+            sudo -u ${var_apache_user} php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env ${groups} --display-name='${var_name}'
         else
             su -s /bin/bash ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:add ${var_username} --password-from-env --display-name='${var_name}'"
         fi
-        su -s /bin/bash ${var_apache_user} -c " php ${var_path_nextcloud}/occ user:setting ${var_username} settings email '${var_email}'"
-        su -s /bin/bash ${var_apache_user} -c " php ${var_path_nextcloud}/occ user:setting ${var_username} files quota '${var_quota}'"
+        su -s /bin/bash ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:setting ${var_username} settings email '${var_email}'"
+        su -s /bin/bash ${var_apache_user} -c "php ${var_path_nextcloud}/occ user:setting ${var_username} files quota '${var_quota}'"
         echo "${var_username};${var_password}" >> "${var_result_file}"
     done < "$input"
     exit 0
 }
 
+function add_to_group(){
+    var_apache_user=${webuser}
+    var_path_nextcloud=${nxt_path}
+
+    group=$2
+    input=$1
+    echo $group $input
+    i=1
+    while read -r line
+    do
+        [ -z "$line" ] && continue
+        test $i -eq 1 && ((i=i+1)) && continue
+        var_username=$(echo "${line}" | cut -d"," -f2)
+        su -s /bin/bash ${var_apache_user} -c "php ${var_path_nextcloud}/occ group:adduser ${group} ${var_username}" 
+	echo $var_username $group
+    done < "$input"
+}
+
 function do_help(){
     cat <<EOF
 
-$0 --csv /path/of/users_csv --header [true|false] --sep ";" --debug [true|false] --nxt_path /path/nextcloud --log_path /path/output/log
+--csv /path/of/users_csv --header [true|false] --sep "," --debug [true|false] --nxt_path /path/nextcloud --log_path /path/output/log
 --help: show this
+--add-grp: add all users in csv file in to group
+--grp-report : show report of all users by group
 --csv: path of csv with users
 --sep: separator for csv ex ; or , etc..
 --nxt_path: absolute path of nextcloud installation
@@ -115,7 +138,7 @@ function print_default(){
     print_value
 }
 function print_value(){
-    echo -e "csv path: $(pwd)/users.csv"
+    echo -e "csv path:" $csv
     echo -e "with header: " $header
     echo -e "separator file: " "\""$sep"\""
     echo -e "web user: "$webuser
@@ -129,13 +152,14 @@ csv="$(pwd)/users.csv"
 header="true"
 sep=","
 debug="false"
-webuser="root"
-nxt_path="/var/www"
+webuser="www-data"
+nxt_path="/var/www/html/nextcloud"
 log_path="/var/log/nxt_tools/"
 mkdir -p $log_path &> /dev/null
 if [ $? -eq 1 ]; then
     echo "can't write in $log_path"
 fi
+
 function do_import() {
     clear
     echo "Running options..."
@@ -148,7 +172,7 @@ PROGNAME=${0##*/}
 PROGVERSION=0.1.0
 SHORTOPTS="hs:cr"
 
-LONGOPTS="help,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default,get_example"
+LONGOPTS="help,add-grp,grp-report,csv:,sep:,debug,header:,webuser:,nxt_path:,log_path:,default,get_example"
 
 ARGS=$(getopt -s bash  --options $SHORTOPTS --longoptions $LONGOPTS --name $PROGNAME -- "$@" )
 
@@ -161,6 +185,16 @@ eval set -- "$ARGS"
 while true; do
     
     case $1 in
+        --add-grp)
+	    shift
+            shift
+	    add_to_group $1 $2
+            exit 0
+        ;;
+        --grp-report)
+            sudo -u www-data php /var/www/html/nextcloud/occ group:list
+            exit 0
+        ;;
         -h|--help)
             shift
             do_help
