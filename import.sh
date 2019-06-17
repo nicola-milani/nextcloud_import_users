@@ -91,7 +91,6 @@ EOF
     
 }
 
-
 function get_example(){
     
     if [ -f $(pwd)/users_template.csv ]; then
